@@ -5,7 +5,7 @@ ACTION = "READ"
 COROUTINE = nil
 -- testmode exists for developers on mac/linux to avoid dataloss if the migration terminates during a file overwrite
 -- instead of the main folder, the files are instead written to a separate "testing" folder
-TESTMODE = true
+TESTMODE = false
 
 function love.load()
   CANVAS = love.graphics.newCanvas(800, 600)
