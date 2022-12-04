@@ -14,7 +14,9 @@ function AndroidMigration.readStorage(self)
 end
 
 function AndroidMigration.wipeStorage(self)
-  --self:recursiveRemoveFiles("") -- "" is the root directory, enable for final testing/release
+  if not TESTMODE then
+    self:recursiveRemoveFiles("") -- "" is the root directory
+  end
 end
 
 function AndroidMigration.writeStorage(self)
