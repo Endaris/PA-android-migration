@@ -6,7 +6,7 @@ function AndroidMigration.recursiveRemoveFiles(self, folder)
   for _, fileName in ipairs(filesTable) do
     local file = folder .. "/" .. fileName
     local info = lfs.getInfo(file)
-    if info then
+    if info and (file == "" or lfs.getRealDirectory(file) == self.saveDirectory) then
       if info.type == "directory" then
         self:recursiveRemoveFiles(file)
       elseif info.type == "file" then
@@ -16,10 +16,14 @@ function AndroidMigration.recursiveRemoveFiles(self, folder)
       end
     end
   end
-  -- directories can only get removed after they were emptied
-  self:logEvent("Removing folder " .. folder .. " from " .. DATA_LOCATION .. " storage")
-  love.filesystem.remove(folder)
-  coroutine.yield()
+  
+  -- the root folder can't be deleted even if we try so get rid of erroneous output
+  if folder ~= "" then
+    -- directories can only get removed after they were emptied
+    self:logEvent("Removing folder \"" .. folder .. "\" from " .. DATA_LOCATION .. " storage")
+    love.filesystem.remove(folder)
+    coroutine.yield()
+  end
 end
 
 --[[ 
@@ -61,23 +65,21 @@ function AndroidMigration.recursiveRead(self, folder, fileTree)
     -- copy to a testfolder so that on non-windows OS it doesn't overwrite/wipe the present files
     fileTree[folderName].path = "testing/" .. fileTree[folderName].path
   end
-  self:logEvent("Reading folder " .. folder .. " into memory")
+  self:logEvent("Reading folder \"" .. folder .. "\" into memory")
   for _,v in ipairs(filesTable) do
     local file = folder.."/"..v
     local info = love.filesystem.getInfo(file)
-    if info then
+    -- don't copy files from the app, reading from root directory reads from BOTH internal storage as well as the main game files
+    -- but we only want to copy files in the save directory
+    if info and (file == "" or love.filesystem.getRealDirectory(file) == self.saveDirectory) then
       if info.type == "file" then
-        -- don't copy files from the app, reading from root directory reads from BOTH internal storage as well as the main game files
-        -- but we only want to copy files in the save directory
-        if love.filesystem.getRealDirectory(file) == self.saveDirectory then
-          self:logEvent("Reading file " .. file .. " into memory")
-          fileTree[folderName].files[v] = { type = "file", content = getFileContent(file), path = file }
-          if TESTMODE then
-            -- copy to a testfolder so that on non-windows OS it doesn't overwrite/wipe the present files
-            fileTree[folderName].files[v].path = "testing/" .. fileTree[folderName].files[v].path
-          end
-          coroutine.yield()
+        self:logEvent("Reading file " .. file .. " into memory")
+        fileTree[folderName].files[v] = { type = "file", content = getFileContent(file), path = file }
+        if TESTMODE then
+          -- copy to a testfolder so that on non-windows OS it doesn't overwrite/wipe the present files
+          fileTree[folderName].files[v].path = "testing/" .. fileTree[folderName].files[v].path
         end
+        coroutine.yield()
       elseif info.type == "directory" then
         self:recursiveRead(file, fileTree[folderName].files)
       end
@@ -89,11 +91,11 @@ end
 function AndroidMigration.recursiveWrite(self, fileTree)
   for i, properties in pairs(fileTree) do
     if properties.type == "directory" then
-      self:logEvent("Creating folder " .. properties.path .. " in " .. DATA_LOCATION .. " storage")
+      self:logEvent("Creating folder \"" .. properties.path .. "\" in " .. DATA_LOCATION .. " storage")
       if not love.filesystem.getInfo(properties.path, "directory") then
         love.filesystem.createDirectory(properties.path)
       else
-        self:logEvent("Folder " .. properties.path .. " already exists in " .. DATA_LOCATION .. " storage")
+        self:logEvent("Folder \"" .. properties.path .. "\" already exists in " .. DATA_LOCATION .. " storage")
       end
       coroutine.yield()
       self:recursiveWrite(properties.files)

@@ -6,37 +6,43 @@ AndroidMigration = { eventLog = {}, progress = "Waiting for confirmation" }
 require("file")
 
 function AndroidMigration.readStorage(self)
-  self.progress = "Reading all files in " .. DATA_LOCATION .. " storage into memory..."
+  self:updateProgress("Reading all files in " .. DATA_LOCATION .. " storage into memory...")
   self.filetree = {}
   self.saveDirectory = love.filesystem.getSaveDirectory()
+  coroutine.yield()
   self:recursiveRead("", self.filetree) -- "" refers to the root directory
-  self.progress = "Finished reading all files in " .. DATA_LOCATION .. " storage into memory"
+  self:updateProgress("Finished reading all files in " .. DATA_LOCATION .. " storage into memory")
 end
 
 function AndroidMigration.wipeStorage(self)
+  local successMessage = "All files have been wiped from " .. DATA_LOCATION
   if not TESTMODE then
     self:recursiveRemoveFiles("") -- "" is the root directory
+  else
+    successMessage = successMessage .. " (not)"
   end
+  self:updateProgress(successMessage)
 end
 
 function AndroidMigration.writeStorage(self)
-  self.progress = "Writing all files in memory to " .. DATA_LOCATION .. " storage"
+  self:updateProgress("Writing all files in memory to " .. DATA_LOCATION .. " storage")
+  coroutine.yield()
   self:recursiveWrite(self.filetree)
-  self.progress = "Finished writing all files from memory to " .. DATA_LOCATION .. " storage"
+  self:updateProgress("Finished writing all files from memory to " .. DATA_LOCATION .. " storage")
 end
 
 function AndroidMigration.validateWrite(self)
   self.action = "VALIDATE"
   self.oldFiletree = self.filetree
-  self.progress = "Confirming results of write process in " .. DATA_LOCATION .. " storage"
+  self:updateProgress("Confirming results of write process in " .. DATA_LOCATION .. " storage")
   self:readStorage()
-  self.progress = "Comparing write results with internal memory to validate successful migration"
+  self:updateProgress("Comparing write results with internal memory to validate successful migration")
   return self:recursiveCompare(self.oldFiletree, self.filetree)
 end
 
 function AndroidMigration.reboot(self, intendedLocation, action)
+  self:updateProgress("Restart to " .. action .. DATA_LOCATION .. " imminent")
   self:logEvent(".")
-  self.progress = self.progress .. "\nRestart to " .. action .. " imminent"
   for i = 0, 300 do
     self.eventLog[#self.eventLog] = self.eventLog[#self.eventLog] .. "."
     self:printEvents()
@@ -56,11 +62,6 @@ function AndroidMigration.terminateMigration(self, intendedLocation)
     self.eventLog[#self.eventLog] = self.eventLog[#self.eventLog] .. "."
     self:printEvents()
   end
-  if intendedLocation == "INTERNAL" then
-    self.progress = "Migration failed"
-  else
-    self.progress = "Migration successful"
-  end
   
   self:logEvent("Please confirm via touch to terminate the application")
   self:printEvents()
@@ -68,6 +69,11 @@ function AndroidMigration.terminateMigration(self, intendedLocation)
     coroutine.yield()
   end
   love.event.quit()
+end
+
+function AndroidMigration.updateProgress(self, newProgress)
+  self:logEvent(newProgress)
+  self.progress = newProgress
 end
 
 function AndroidMigration.logEvent(self, ...)
@@ -90,6 +96,7 @@ function AndroidMigration.printEvents(self)
 end
 
 function AndroidMigration.writeLog(self)
+  self:logEvent("Writing log to " .. DATA_LOCATION .. " storage")
   local text = table.concat(self.eventLog, "\n")
   self.eventLog = { self.eventLog[#self.eventLog] }
   print(text)
@@ -141,19 +148,18 @@ function AndroidMigration.run(self)
     self:writeStorage()
     coroutine.yield()
     if self:validateWrite() then
-      self.progress = "Comparison of files finished, all write results are valid"
+      self:updateProgress("Comparison of files finished, all write results are valid")
       coroutine.yield()
       self:logEvent("Rebooting to wipe internal storage")
       coroutine.yield()
       self:reboot("INTERNAL", "WIPE")
       coroutine.yield()
     else
-      self.progress = "Validation of migration process failed, check migration.log for further information"
-      coroutine.yield()
-      self:logEvent("Starting the game using internal storage...")
+      self:updateProgress("Validation of migration process failed, check migration.log for further information")
       coroutine.yield()
       self:writeLog()
-      self:terminateMigration("INTERNAL")
+      coroutine.yield()
+      self:terminateMigration()
     end
   end
 end
