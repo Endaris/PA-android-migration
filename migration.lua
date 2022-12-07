@@ -8,7 +8,6 @@ require("file")
 function AndroidMigration.readStorage(self)
   self:updateProgress("Reading all files in " .. DATA_LOCATION .. " storage into memory...")
   self.filetree = {}
-  self.saveDirectory = love.filesystem.getSaveDirectory()
   coroutine.yield()
   self:recursiveRead("", self.filetree) -- "" refers to the root directory
   self:updateProgress("Finished reading all files in " .. DATA_LOCATION .. " storage into memory")
@@ -16,10 +15,10 @@ end
 
 function AndroidMigration.wipeStorage(self)
   local successMessage = "All files have been wiped from " .. DATA_LOCATION
-  if not TESTMODE then
-    self:recursiveRemoveFiles("") -- "" is the root directory
-  else
+  if TESTMODE == true then
     successMessage = successMessage .. " (not)"
+  else
+    self:recursiveRemoveFiles("") -- "" is the root directory
   end
   self:updateProgress(successMessage)
 end
@@ -84,6 +83,7 @@ end
 function AndroidMigration.printEvents(self)
   local i = 0
 
+
   for y_offset = CANVAS:getHeight() - 50, 60, -15 do
     if self.eventLog[#self.eventLog - i] then
       love.graphics.print(self.eventLog[#self.eventLog - i], 30, y_offset)
@@ -91,8 +91,9 @@ function AndroidMigration.printEvents(self)
     end
   end
   if self.progress then
-    love.graphics.printf(self.progress, 15, 30, CANVAS:getWidth() - 30, "left")
+    love.graphics.printf(self.progress, 15, 45, CANVAS:getWidth() - 30, "left")
   end
+  love.graphics.printf("save location: " .. self.saveDirectory, 15, 30, CANVAS:getWidth() - 30, "left")
 end
 
 function AndroidMigration.writeLog(self)

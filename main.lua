@@ -17,6 +17,7 @@ function love.load()
     end
     COROUTINE = coroutine.create(AndroidMigration.run)
   end
+  AndroidMigration.saveDirectory = love.filesystem.getSaveDirectory()
 end
 
 function love.update(dt)
