@@ -40,7 +40,7 @@ function AndroidMigration.validateWrite(self)
 end
 
 function AndroidMigration.reboot(self, intendedLocation, action)
-  self:updateProgress("Restart to " .. action .. DATA_LOCATION .. " imminent")
+  self:updateProgress("Restart to " .. action .. " " .. intendedLocation .. " imminent")
   self:logEvent(".")
   for i = 0, 300 do
     self.eventLog[#self.eventLog] = self.eventLog[#self.eventLog] .. "."
